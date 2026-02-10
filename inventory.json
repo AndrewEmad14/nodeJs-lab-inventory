@@ -1,1 +1,1 @@
-[{"id":1,"itemName":"laptop","quantity":"3","category":"tech"}]
+[{"id":0,"itemName":"Lenovo","quantity":1,"category":"laptop","status":"low on stock"},{"id":1,"itemName":"Hp","quantity":2,"category":"laptop","status":"low on stock"}]
