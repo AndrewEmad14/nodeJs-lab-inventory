@@ -67,7 +67,7 @@ async function addItem(inventory) {
     const inputQuantity = await inputReader.question("quantity: ");
     const inputCategory = await inputReader.question("category: ");
 
-    const newId = inventory.length;
+    const newId = inventory.at(-1).id+1;
     const itemName = inputItemName ? inputItemName : "";
     const quantity = inputQuantity ? parseInt(inputQuantity) : 1;
     const category = inputCategory ? inputCategory : "General";

@@ -1,1 +1,1 @@
-[{"id":0,"itemName":"Lenovo","quantity":1,"category":"laptop","status":"low on stock"},{"id":1,"itemName":"Hp","quantity":2,"category":"laptop","status":"low on stock"}]
+[{"id":0,"itemName":"Lenovo","quantity":5,"category":"laptop","status":"available"},{"id":1,"itemName":"Hp","quantity":2,"category":"laptop","status":"low on stock"},{"id":2,"itemName":"Mac book pro","quantity":22,"category":"Laptop","status":"available"}]
