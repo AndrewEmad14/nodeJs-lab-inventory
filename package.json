@@ -1,8 +1,13 @@
 {
   "dependencies": {
-    "nodemon": "3.1.11"
+  }, "scripts": {
+    "start": "nodemon .",
+    "deploy": "deploy to gcp",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
+    "nodemon": "^3.1.11",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.0.0",
     "globals": "^17.3.0"

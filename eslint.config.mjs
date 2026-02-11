@@ -13,7 +13,8 @@ export default defineConfig([
       "prefer-const": "error", // Force 'const' over 'let' if value doesn't change
       "eqeqeq": ["error", "always"],
       "no-var": "error",
-      "indent": ["error", 2]
+      "indent": ["error", 2],
+      "semi": ["error", "always"]
     },
   },
 ]);
