@@ -1,0 +1,20 @@
+meta {
+  name: getPage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/{{page}}
+  body: none
+  auth: inherit
+}
+
+vars:pre-request {
+  page: home.html
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
