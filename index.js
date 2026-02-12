@@ -45,6 +45,50 @@ const server = http.createServer(async(req, res) => {
       }
       
     
+    }else if(params.at(1)==="serbal.html"){
+      try{
+        const  filePath= path.join(__dirname,'pages','serbal.html');
+        const content = await readFile(filePath);
+        if(!content){
+          status=404;
+          error = JSON.stringify({error:"page not found"});
+          res.write(error);
+
+        }else{
+          res.writeHead(status, {
+            'content-type': 'text/html'
+          });
+          res.write(content);
+        }
+        
+        res.end();
+      }catch(error){
+        res.writeHead(500, {'content-type': 'application/json'});
+        res.write(JSON.stringify({error:error}));
+        res.end();
+      }
+    }else if(params.at(1)==="astronomy.html"){
+      try{
+        const  filePath= path.join(__dirname,'pages','astronomy.html');
+        const content = await readFile(filePath);
+        if(!content){
+          status=404;
+          error = JSON.stringify({error:"page not found"});
+          res.write(error);
+
+        }else{
+          res.writeHead(status, {
+            'content-type': 'text/html'
+          });
+          res.write(content);
+        }
+        
+        res.end();
+      }catch(error){
+        res.writeHead(500, {'content-type': 'application/json'});
+        res.write(JSON.stringify({error:error}));
+        res.end();
+      }
     }else if(params.at(1)==="home.html"){
       try{
         const  filePath= path.join(__dirname,'pages','home.html');
@@ -79,6 +123,50 @@ const server = http.createServer(async(req, res) => {
         }else{
           res.writeHead(status, {
             'content-type': 'text/css'
+          });
+          res.write(content);
+        }
+        
+        res.end();
+      }catch(error){
+        res.writeHead(500, {'content-type': 'application/json'});
+        res.write(JSON.stringify({error:error}));
+        res.end();
+      }
+    }else if(params.at(1)==="astronomy.jpg"){
+      try{
+        const  filePath= path.join(__dirname,'public','images','astronomy.jpg');
+        const content = await readFile(filePath);
+        if(!content){
+          status=404;
+          error = JSON.stringify({error:"file not found"});
+          res.write(error);
+
+        }else{
+          res.writeHead(status, {
+            'content-type': 'image/jpeg'
+          });
+          res.write(content);
+        }
+        
+        res.end();
+      }catch(error){
+        res.writeHead(500, {'content-type': 'application/json'});
+        res.write(JSON.stringify({error:error}));
+        res.end();
+      }
+    }else if(params.at(1)==="serbal.jpg"){
+      try{
+        const  filePath= path.join(__dirname,'public','images','serbal.jpg');
+        const content = await readFile(filePath);
+        if(!content){
+          status=404;
+          error = JSON.stringify({error:"file not found"});
+          res.write(error);
+
+        }else{
+          res.writeHead(status, {
+            'content-type': 'image/jpeg'
           });
           res.write(content);
         }
