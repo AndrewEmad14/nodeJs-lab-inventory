@@ -1,13 +1,21 @@
 meta {
-  name: get an item
+  name: Patch item
   type: http
-  seq: 3
+  seq: 6
 }
 
-get {
+patch {
   url: {{baseUrl}}/products/{{id}}
-  body: none
+  body: json
   auth: inherit
+}
+
+body:json {
+  {
+      "itemName": "asdfadsf",
+      "quantity": 5,
+      "category": "smol"
+    }
 }
 
 vars:pre-request {

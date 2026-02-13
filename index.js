@@ -8,7 +8,7 @@ const { pipeline } = require('stream');
 
 //enums & constants
 const routes = {
-  INVENTORY: 'inventory',
+  PRODUCT: 'products',
   SERBAL_HTML: 'serbal.html',
   ASTRONOMY_HTML: 'astronomy.html',
   HOME_HTML: 'home.html',
@@ -36,19 +36,17 @@ app.use(express.static(folders.PUBLIC));
 // for parsing application/json requests
 app.use(express.json());          
 
-app.get(`/${routes.INVENTORY}/:inventoryId`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.INVENTORY}.json`);
-  const id = req.params.inventoryId;
-
-
-  getInventoryById(filePath,res,parseInt(id));
+app.get(`/${routes.PRODUCT}/:productId`,  (req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
+  const id = req.params.productId;
+  getproductById(filePath,res,parseInt(id));
   
 
 });
-app.get(`/${routes.INVENTORY}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.INVENTORY}.json`);
+app.get(`/${routes.PRODUCT}`,  (req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
   
-  getInventory(filePath,res);
+  getproduct(filePath,res);
   
 
 });
@@ -69,25 +67,44 @@ app.get(`/${routes.PAGE_NOT_FOUND_HTML}`,  (req,res)=>{
   getPage(filePath,res);
 });
 
-app.post(`/${routes.INVENTORY}`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.INVENTORY}.json`);
+app.post(`/${routes.PRODUCT}`,(req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
   addItem(filePath,req,res);
 });
 
+app.delete(`/${routes.PRODUCT}/:productId`,(req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
+  const id = req.params.productId;
+  removeItem(filePath,res,parseInt(id));
 
+});
 
-
+app.patch(`/${routes.PRODUCT}/:productId`,(req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
+  const id = req.params.productId;
+  patchItem(filePath,req,res,parseInt(id));
+});
+app.patch(`/${routes.PRODUCT}/:productId/destock/:quantity`,(req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
+  const id = req.params.productId;
+  destockItem(filePath,req,res,parseInt(id));
+});
+app.patch(`/${routes.PRODUCT}/:productId/restock/:quantity`,(req,res)=>{
+  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
+  const id = req.params.productId;
+  restockItem(filePath,req,res,parseInt(id));
+});
 
 app.listen(PORT,()=>{
   console.log(`Example app listening on port ${PORT}`);
 });
 
 /**
- * get all the inventory items
- * @param {string} path the inventory path
+ * get all the product items
+ * @param {string} path the product path
  * @param {Response} res the response of the server
  */
-function getInventory(path,res){
+function getproduct(path,res){
   const source =  fs.createReadStream(path);
   res.type(types.JSON);
   pipeline(source,res,(err) => {
@@ -99,12 +116,12 @@ function getInventory(path,res){
 
 }
 /**
- * get an inventory item by id
- * @param {string} path the inventory path
+ * get an product item by id
+ * @param {string} path the product path
  * @param {Response} res the response of the server
  * @param {number} id target item id
  */
-function getInventoryById(path,res,id){
+function getproductById(path,res,id){
   const source =  fs.createReadStream(path);
   let data = '';
   source.on('data',(chunk)=>{
@@ -136,7 +153,7 @@ function getPage(path,res){
 
 /**
  * prompts the user input
- * @param {string} path - the path to your inventory
+ * @param {string} path - the path to your product
  * @param {Request} req - request to the sever
  * @param {Response} res -response of the server
  */
@@ -151,9 +168,9 @@ function addItem(path,req,res) {
       try{
 
       
-        const inventory = JSON.parse(data);
+        const product = JSON.parse(data);
         const postData = req.body;
-        const lastItem = inventory.at(-1);
+        const lastItem = product.at(-1);
         const newId = (lastItem ? lastItem.id : 0  )+ 1;
         if(!postData.itemName){
           throw new Error("you must enter a name");
@@ -174,9 +191,9 @@ function addItem(path,req,res) {
           category: category,
         };
 
-        const newinventory = inventory.concat(item);
+        const newproduct = product.concat(item);
         const writeStream = fs.createWriteStream(path);
-        writeStream.write(JSON.stringify(newinventory));
+        writeStream.write(JSON.stringify(newproduct));
         writeStream.end();
         res.status(201).send("Item Added successfully");
       }catch(error){
@@ -187,3 +204,110 @@ function addItem(path,req,res) {
     res.status(400).json({error:error.message});
   }
 }
+
+/**
+ * remove an item from the product
+ * @param {string} path - product path
+ * @param {Response} res - server resonse
+ * @param {number} id - the item id you wish to remove
+ */
+
+function removeItem(path,res,id){
+  const source =  fs.createReadStream(path);
+  let data = '';
+  source.on('data',(chunk)=>{
+    data+=chunk;
+  });
+  source.on('end',()=>{
+    const product = JSON.parse(data);
+    const responseData = product.filter((item)=>item.id !== id);
+    const writeStream = fs.createWriteStream(path);
+    writeStream.write(JSON.stringify(responseData));
+    writeStream.end();
+    res.status(202).send("item deleted!");
+  });
+}
+
+/**
+ * patch an item in the product
+ * @param {string} path - product path
+ * @param {Request} req - request data
+ * @param {Response} res - server resonse
+ * @param {number} id -the item you wish to patch
+ */
+function patchItem(path,req,res,id){
+  const source =  fs.createReadStream(path);
+  let data = '';
+  source.on('data',(chunk)=>{
+    data+=chunk;
+  });
+  source.on('end',()=>{
+    const product = JSON.parse(data);
+    const responseData = product;
+    const updatedItem = product.find((item)=>item.id === id);
+    const patchData = req.body;
+    updatedItem.itemName = patchData.itemName;
+    updatedItem.quantity = patchData.quantity;
+    updatedItem.category = patchData.category;
+    const writeStream = fs.createWriteStream(path);
+    writeStream.write(JSON.stringify(responseData));
+    writeStream.end();
+    res.status(202).send("item patched!");
+  });
+}
+
+/**
+ * destock an item in the product
+ * @param {string} path - product path
+ * @param {Request} req - request data
+ * @param {Response} res - server resonse
+ * @param {number} id -the item you wish to destock
+ */
+function destockItem(path,req,res,id){
+  const source =  fs.createReadStream(path);
+  let data = '';
+  source.on('data',(chunk)=>{
+    data+=chunk;
+  });
+  source.on('end',()=>{
+    const product = JSON.parse(data);
+    const responseData = product;
+    const updatedItem = product.find((item)=>item.id === id);
+    const patchData = parseInt(req.params.quantity);
+    updatedItem.quantity -= patchData;
+    const writeStream = fs.createWriteStream(path);
+    writeStream.write(JSON.stringify(responseData));
+    writeStream.end();
+    res.status(202).send("item destocked!");
+  });
+}
+
+
+/**
+ * restock an item in the product
+ * @param {string} path - product path
+ * @param {Request} req - request data
+ * @param {Response} res - server resonse
+ * @param {number} id -the item you wish to restock
+ */
+function restockItem(path,req,res,id){
+  const source =  fs.createReadStream(path);
+  let data = '';
+  source.on('data',(chunk)=>{
+    data+=chunk;
+  });
+  source.on('end',()=>{
+    const product = JSON.parse(data);
+    const responseData = product;
+    const updatedItem = product.find((item)=>item.id === id);
+    const patchData = parseInt(req.params.quantity);
+    updatedItem.quantity += patchData;
+    const writeStream = fs.createWriteStream(path);
+    writeStream.write(JSON.stringify(responseData));
+    writeStream.end();
+    res.status(202).send("item restocked!");
+  });
+}
+
+
+//todos: middle ware , page not found ,request params consistency
