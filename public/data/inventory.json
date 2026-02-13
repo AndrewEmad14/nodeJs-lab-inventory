@@ -43,26 +43,14 @@
   },
   {
     "id": 8,
-    "itemName": "andrew",
-    "quantity": null,
+    "itemName": "smol",
+    "quantity": 5,
     "category": "haaaai"
   },
   {
     "id": 9,
-    "itemName": "andrew",
-    "quantity": null,
-    "category": "haaaai"
-  },
-  {
-    "id": 10,
-    "itemName": "andrew",
-    "quantity": null,
-    "category": "haaaai"
-  },
-  {
-    "id": 11,
-    "itemName": "andrew",
-    "quantity": null,
+    "itemName": "asdfadsf",
+    "quantity": 5,
     "category": "haaaai"
   }
 ]
