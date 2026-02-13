@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import json from "@eslint/json";
 import globals from "globals";
 import { defineConfig } from "eslint/config";
 
@@ -16,5 +17,20 @@ export default defineConfig([
       "indent": ["error", 2],
       "semi": ["error", "always"]
     },
-  },
+  },{
+    files: ["**/*.json"],
+    // You generally want to ignore package-lock.json
+    ignores: ["package-lock.json"],
+    plugins: { json },
+    language: "json/json",
+    extends: ["json/recommended"],
+    rules: {
+      "jsonc/indent": ["error", 2], // Set to 2 or 4 spaces
+      "jsonc/comma-dangle": ["error", "never"],
+      "jsonc/key-spacing": ["error", { "beforeColon": false, "afterColon": true }],
+      "jsonc/array-bracket-newline": ["error", { "multiline": true }],
+      "jsonc/sort-keys": "warn",
+      "jsonc/no-multi-spaces": "error",
+    }
+  }
 ]);

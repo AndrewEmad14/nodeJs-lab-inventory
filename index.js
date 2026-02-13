@@ -29,7 +29,7 @@ const server = http.createServer(async(req, res) => {
                 'content-type': 'application/json'
               });
               res.write(error);
-       
+
             }else{
               res.writeHead(200, {
                 'content-type': 'application/json'
@@ -76,7 +76,6 @@ const server = http.createServer(async(req, res) => {
         const  filePath= path.join(__dirname,'pages','serbal.html');
         const content = await readFile(filePath);
         if(!content){
-         
           res.writeHead(404, {'content-type': 'application/json'});
           error = JSON.stringify({error:"page not found"});
           res.write(error);
@@ -244,7 +243,31 @@ const server = http.createServer(async(req, res) => {
       res.end();
     }
   }else if(method === 'POST'){
-    
+    if(params.at(1)=== 'inventory'){
+      let body = '';
+      req.on('data',chunk =>{
+        body+= chunk.toString();
+      });
+      req.on('end',async ()=>{
+        try{
+          const postData = JSON.parse(body);
+        
+          const  filePath= path.join(__dirname,'public','data','inventory.json');
+          const inventory = await readFile(filePath);
+          const parsedInventory = JSON.parse(inventory);
+          addItem(parsedInventory,postData,filePath);
+          res.writeHead(201,{'content-type': 'text/plain'});
+          res.write("Data created successfully");
+
+          res.end();
+
+        }catch(error){
+          res.writeHead(400,{'content-type': 'application/json'});
+          res.write(JSON.stringify({error:error.message}));
+          res.end();
+        }
+      });
+    }
   }
 });
 // listenting to the server
@@ -284,7 +307,33 @@ function readFile(path,encoding = 'utf8'){
   });
   
 }
+/**
+ * prompts the user input
+ * @param {object[]}inventory the inventory you want to add the item to
+ * @param {object}postData - the data you want to add
+ * @param {string} path - the path to your inventory
+ */
+function addItem(inventory,postData ,path) {
+  const writeStream = fs.createWriteStream(path);
 
+  const lastItem = inventory.at(-1);
+  const newId = (lastItem ? lastItem.id : 0  )+ 1;
+  const itemName = postData.itemName ?  postData.itemName : "";
+  const quantity = postData.quantity ? parseInt(postData.quantity) : 1;
+  const category = postData.category ? postData.category  : "General";
+  const item = {
+    id: newId,
+    itemName: itemName,
+    quantity: quantity,
+    category: category,
+  };
+  console.log(`to be added item = ${item}`);
+  console.log(`current inventory = ${inventory}`);
+  const newinventory = inventory.concat(item);
+  writeStream.write(JSON.stringify(newinventory));
+  writeStream.end();
+  
+}
 /**
  * @param {string} content - the type of conent you wish for the res to display
  * @param {string[]} params - the url params
