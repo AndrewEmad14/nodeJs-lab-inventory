@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+
 const routes = {
   INVENTORY: 'inventory',
   SERBAL_HTML: 'serbal.html',
@@ -8,7 +9,8 @@ const routes = {
   HOME_HTML: 'home.html',
   HOME_CSS: 'home.css',
   ASTRONOMY_JPG: 'astronomy.jpg',
-  SERBAL_JPG: 'serbal.jpeg'
+  SERBAL_JPG: 'serbal.jpeg',
+  PAGE_NOT_FOUND_HTML:'page-not-found.html'
 };
 const methods={
   GET:'GET',
@@ -18,6 +20,7 @@ const types = {
   HTML_PAGE:'html',
   CSS_PAGE:'css'
 };
+
 //creating a server 
 const server = http.createServer(async(req, res) => {
   const {method, url } = req;
@@ -27,7 +30,7 @@ const server = http.createServer(async(req, res) => {
 
   if (method === methods.GET) {
     if (params.at(1) === routes.INVENTORY) {
-      const filePath = path.join(__dirname,'public','data','inventory.json');
+      const filePath = path.join(__dirname,'public','data',`${routes.INVENTORY}.json`);
       if(params.at(2)){
         const id = parseInt(params.at(2));
         await getInventoryById(filePath,id,res);
@@ -35,51 +38,37 @@ const server = http.createServer(async(req, res) => {
         await getInventory(filePath,res);
       }
     }else if(params.at(1)===routes.SERBAL_HTML){
-      const  filePath= path.join(__dirname,'pages','serbal.html');
+      const  filePath= path.join(__dirname,'pages',routes.SERBAL_HTML);
       await getPage(filePath,res,types.HTML_PAGE);
     }else if(params.at(1)===routes.ASTRONOMY_HTML){
-      const  filePath= path.join(__dirname,'pages','astronomy.html');
+      const  filePath= path.join(__dirname,'pages',routes.ASTRONOMY_HTML);
       await getPage(filePath,res,types.HTML_PAGE);
     }else if(params.at(1)===routes.HOME_HTML){
-      const  filePath= path.join(__dirname,'pages','home.html');
+      const  filePath= path.join(__dirname,'pages',routes.HOME_HTML);
       await getPage(filePath,res,types.HTML_PAGE);
     }else if( params.at(2) === routes.HOME_CSS) {
-      const  filePath= path.join(__dirname,'style','home.css');
+      const  filePath= path.join(__dirname,'style',routes.HOME_CSS);
       await getPage(filePath,res,types.CSS_PAGE);
     }else if(params.at(3)===routes.ASTRONOMY_JPG){
-      const  filePath= path.join(__dirname,'public','images','astronomy.jpg');
+      const  filePath= path.join(__dirname,'public','images',routes.ASTRONOMY_JPG);
       await getImg(filePath,res);
     }else if(params.at(3)===routes.SERBAL_JPG){
-      const  filePath= path.join(__dirname,'public','images','serbal.jpeg');
+      const  filePath= path.join(__dirname,'public','images',routes.SERBAL_JPG);
       await getImg(filePath,res);
     }else{
-      const  filePath= path.join(__dirname,'pages','page-not-found.html');
+      const  filePath= path.join(__dirname,'pages',routes.PAGE_NOT_FOUND_HTML);
       await getPage(filePath,res,types.HTML_PAGE);
     }
   }else if(method === methods.POST){
-    if(params.at(1)=== 'inventory'){
+    if(params.at(1)=== routes.INVENTORY){
       let body = '';
       req.on('data',chunk =>{
         body+= chunk.toString();
       });
       req.on('end',async ()=>{
-        try{
-          const postData = JSON.parse(body);
-        
-          const  filePath= path.join(__dirname,'public','data','inventory.json');
-          const inventory = await readFile(filePath);
-          const parsedInventory = JSON.parse(inventory);
-          addItem(parsedInventory,postData,filePath);
-          res.writeHead(201,{'content-type': 'text/plain'});
-          res.write("Data created successfully");
-
-          res.end();
-
-        }catch(error){
-          res.writeHead(400,{'content-type': 'application/json'});
-          res.write(JSON.stringify({error:error.message}));
-          res.end();
-        }
+        const postData = JSON.parse(body);
+        const filePath = path.join(__dirname,'public','data',`${routes.INVENTORY}.json`);
+        await addItem(postData,filePath,res);
       });
     }
   }
@@ -123,28 +112,51 @@ function readFile(path,encoding = 'utf8'){
 }
 /**
  * prompts the user input
- * @param {object[]}inventory the inventory you want to add the item to
  * @param {object}postData - the data you want to add
  * @param {string} path - the path to your inventory
+ * @param {Response} res -response of the server
  */
-function addItem(inventory,postData ,path) {
-  const writeStream = fs.createWriteStream(path);
+async function addItem(postData ,path,res) {
+  try{
+    const inventoryRaw = await readFile(path);
+  
+    const inventory = JSON.parse(inventoryRaw);
+    const lastItem = inventory.at(-1);
+    const newId = (lastItem ? lastItem.id : 0  )+ 1;
+    if(!postData.itemName){
+      throw new Error("you must enter a name");
+    }
+    const itemName =  postData.itemName ;
+    if(postData.quantity<0){
+      throw new Error("cant put negative quantity");
+    }else if(postData.quantity && isNaN(Number(postData.quantity))){
+      throw new Error("quantity must be a number");
+    }
 
-  const lastItem = inventory.at(-1);
-  const newId = (lastItem ? lastItem.id : 0  )+ 1;
-  const itemName = postData.itemName ?  postData.itemName : "";
-  const quantity = postData.quantity ? parseInt(postData.quantity) : 1;
-  const category = postData.category ? postData.category  : "General";
-  const item = {
-    id: newId,
-    itemName: itemName,
-    quantity: quantity,
-    category: category,
-  };
+    const quantity = postData.quantity ? parseInt(postData.quantity) : 1;
+    const category = postData.category ? postData.category  : "General";
+    const item = {
+      id: newId,
+      itemName: itemName,
+      quantity: quantity,
+      category: category,
+    };
 
-  const newinventory = inventory.concat(item);
-  writeStream.write(JSON.stringify(newinventory));
-  writeStream.end();
+    const newinventory = inventory.concat(item);
+    const writeStream = fs.createWriteStream(path);
+    writeStream.write(JSON.stringify(newinventory));
+    writeStream.end();
+    res.writeHead(201,{'content-type': 'text/plain'});
+    res.write("Data created successfully");
+
+    res.end();
+
+  }catch(error){
+    res.writeHead(400,{'content-type': 'application/json'});
+    res.write(JSON.stringify({error:error.message}));
+    res.end();
+  }
+  
   
 }
 /**
