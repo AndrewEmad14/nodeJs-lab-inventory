@@ -5,11 +5,17 @@ meta {
 }
 
 patch {
-  url: 
+  url: {{baseUrl}}/products/:id/destock/:quantity
   body: none
   auth: inherit
 }
 
+params:path {
+  id: 1
+  quantity: 1
+}
+
 settings {
   encodeUrl: true
+  timeout: 0
 }

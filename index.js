@@ -1,313 +1,236 @@
 //imports
 const express = require('express');
 const app = express();
-const fs = require('fs');
 const path = require('path');
-const { pipeline } = require('stream');
+const enums = require('./enums');
+const helpers = require('./helpers');
+
+// middleware validations
+
+/**
+ *  validates id if it is a number or if it is negative
+ * @param {Request} req   request
+ * @param {Response} res response
+ * @param {*} next   next middleware
+ */
+function validateId (req, res, next) {
+  const id = Number(req.params.productId);
+
+  if (isNaN(id) || id < 0) {
+    return res.status(400).send("Invalid input");
+  } 
+
+  next(); 
+
+}
+/**
+ *  validates quantity if it is a number or if it is negative
+ * @param {Request} req   request
+ * @param {Response} res response
+ * @param {*} next   next middleware
+ */
+function validateQuantity(req, res, next) {
+  const quantity = Number(req.params.quantity);
+
+  if (isNaN(quantity) || quantity < 0) {
+    return res.status(400).send("Invalid input");
+  }  
+  next(); 
+}
+/**
+ *  validates productbody 
+ * @param {Request} req   request
+ * @param {Response} res response
+ * @param {*} next   next middleware
+ */
+function validateProductBody(req,res,next){
+  const productBody = req.body;
+  if(!(productBody.itemName.match(/^[a-zA-Z]{2,50}$/))){
+    return res.status(400).send("Invalid item name");
+  }
+  const quantity = Number(productBody.quantity);
+  if (isNaN(quantity) || quantity < 0) {
+    return res.status(400).send("Invalid quantity");
+  } 
+  if(!(productBody.category.match(/^[a-zA-Z]{2,50}$/))){
+    return res.status(400).send("Invalid category");
+  }
+  next();
+}
+/**
+ *  goes to page not found
+ * @param {Request} req   request
+ * @param {Response} res response
+ */
+async function routeToPageNotFound(req,res){
+  try{
+    const filePath = path.join(__dirname,enums.folders.PAGES,`${enums.routes.PAGE_NOT_FOUND_HTML}`);
+    const content = await helpers.getPage(filePath); 
+    if(content){
+      return res.status(404).send(content);
+    }else{
+      return res.status(500).send("server error");
+    }
+  }catch(error){
+    return res.status(500).send(error);
+  }
+}
 
 
-//enums & constants
-const routes = {
-  PRODUCT: 'products',
-  SERBAL_HTML: 'serbal.html',
-  ASTRONOMY_HTML: 'astronomy.html',
-  HOME_HTML: 'home.html',
-  PAGE_NOT_FOUND_HTML:'page-not-found.html'
-};
-const types = {
-  HTML_PAGE:'html',
-  CSS_PAGE:'css',
-  JSON:'json'
-};
-const folders={
-  PUBLIC:'public',
-  DATA:'data',
-  IMAGES:'images',
-  STYLE:'style',
-  PAGES:'pages'
-};
-const PORT = 80;
+function errorHandler(err,req,res,next){
+  console.log(err);
+  res.status(500).send("something failed!");
 
+}
 // ask for  traversal attacks
 
 //uses the public folder statically
-app.use(express.static(folders.PUBLIC));
+app.use(express.static(enums.folders.PUBLIC));
 
 // for parsing application/json requests
 app.use(express.json());          
 
-app.get(`/${routes.PRODUCT}/:productId`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  const id = req.params.productId;
-  getproductById(filePath,res,parseInt(id));
-  
 
-});
-app.get(`/${routes.PRODUCT}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  
-  getproduct(filePath,res);
-  
+app.set('view engine', 'pug');
+app.set('views',path.join(__dirname,enums.folders.PAGES));
 
-});
-app.get(`/${routes.HOME_HTML}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PAGES,`${routes.HOME_HTML}`);
-  getPage(filePath,res);
-});
-app.get(`/${routes.ASTRONOMY_HTML}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PAGES,`${routes.ASTRONOMY_HTML}`);
-  getPage(filePath,res);
-});
-app.get(`/${routes.SERBAL_HTML}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PAGES,`${routes.SERBAL_HTML}`);
-  getPage(filePath,res);
-});
-app.get(`/${routes.PAGE_NOT_FOUND_HTML}`,  (req,res)=>{
-  const filePath = path.join(__dirname,folders.PAGES,`${routes.PAGE_NOT_FOUND_HTML}`);
-  getPage(filePath,res);
-});
 
-app.post(`/${routes.PRODUCT}`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  addItem(filePath,req,res);
-});
-
-app.delete(`/${routes.PRODUCT}/:productId`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  const id = req.params.productId;
-  removeItem(filePath,res,parseInt(id));
-
-});
-
-app.patch(`/${routes.PRODUCT}/:productId`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  const id = req.params.productId;
-  patchItem(filePath,req,res,parseInt(id));
-});
-app.patch(`/${routes.PRODUCT}/:productId/destock/:quantity`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  const id = req.params.productId;
-  destockItem(filePath,req,res,parseInt(id));
-});
-app.patch(`/${routes.PRODUCT}/:productId/restock/:quantity`,(req,res)=>{
-  const filePath = path.join(__dirname,folders.PUBLIC,folders.DATA,`${routes.PRODUCT}.json`);
-  const id = req.params.productId;
-  restockItem(filePath,req,res,parseInt(id));
-});
-
-app.listen(PORT,()=>{
-  console.log(`Example app listening on port ${PORT}`);
-});
-
-/**
- * get all the product items
- * @param {string} path the product path
- * @param {Response} res the response of the server
- */
-function getproduct(path,res){
-  const source =  fs.createReadStream(path);
-  res.type(types.JSON);
-  pipeline(source,res,(err) => {
-    if (err) {
-      res.set( 'Content-Type','text/plain' );
-      res.status(500).send('Streaming error');
-    }
-  });
-
-}
-/**
- * get an product item by id
- * @param {string} path the product path
- * @param {Response} res the response of the server
- * @param {number} id target item id
- */
-function getproductById(path,res,id){
-  const source =  fs.createReadStream(path);
-  let data = '';
-  source.on('data',(chunk)=>{
-    data+=chunk;
-  });
-  source.on('end',()=>{
-    const parsedData = JSON.parse(data);
-    const item = parsedData.find((item)=>item.id === id);
-    res.json(item);
-  });
-}
-
-/**
- * gets an html page
- * @param {string} path   -path of the page
- * @param {response} res  - response object form the http server
- */
-function getPage(path,res){
-  const source =  fs.createReadStream(path);
-  res.type(types.HTML_PAGE);
-  pipeline(source,res,(err) => {
-    if (err) {
-      res.set( 'Content-Type','text/plain' );
-      res.status(500).send('Streaming error');
-    }
-  });
-  
-}
-
-/**
- * prompts the user input
- * @param {string} path - the path to your product
- * @param {Request} req - request to the sever
- * @param {Response} res -response of the server
- */
-function addItem(path,req,res) {
+app.get(`/${enums.routes.PRODUCT}/:productId`, validateId, async (req,res,next)=>{
   try{
-    const source =  fs.createReadStream(path);
-    let data = '';
-    source.on('data',(chunk)=>{
-      data+=chunk;
-    });
-    source.on('end',()=>{
-      try{
-
-      
-        const product = JSON.parse(data);
-        const postData = req.body;
-        const lastItem = product.at(-1);
-        const newId = (lastItem ? lastItem.id : 0  )+ 1;
-        if(!postData.itemName){
-          throw new Error("you must enter a name");
-        }
-        const itemName =  postData.itemName ;
-        if(postData.quantity<0){
-          throw new Error("cant put negative quantity");
-        }else if(postData.quantity && isNaN(Number(postData.quantity))){
-          throw new Error("quantity must be a number");
-        }
-
-        const quantity = postData.quantity ? parseInt(postData.quantity) : 1;
-        const category = postData.category ? postData.category  : "General";
-        const item = {
-          id: newId,
-          itemName: itemName,
-          quantity: quantity,
-          category: category,
-        };
-
-        const newproduct = product.concat(item);
-        const writeStream = fs.createWriteStream(path);
-        writeStream.write(JSON.stringify(newproduct));
-        writeStream.end();
-        res.status(201).send("Item Added successfully");
-      }catch(error){
-        res.status(400).json({error:error.message});
-      }
-    });
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const id = parseInt(req.params.productId);
+    const product = await helpers.getproductById(filePath,id);
+    if(product){
+      return res.status(200).send(product);
+    }
+    next();
   }catch(error){
-    res.status(400).json({error:error.message});
+    next(error);
   }
-}
 
-/**
- * remove an item from the product
- * @param {string} path - product path
- * @param {Response} res - server resonse
- * @param {number} id - the item id you wish to remove
- */
+},routeToPageNotFound,errorHandler);
 
-function removeItem(path,res,id){
-  const source =  fs.createReadStream(path);
-  let data = '';
-  source.on('data',(chunk)=>{
-    data+=chunk;
-  });
-  source.on('end',()=>{
-    const product = JSON.parse(data);
-    const responseData = product.filter((item)=>item.id !== id);
-    const writeStream = fs.createWriteStream(path);
-    writeStream.write(JSON.stringify(responseData));
-    writeStream.end();
-    res.status(202).send("item deleted!");
-  });
-}
+app.get(`/${enums.routes.PRODUCT}`,async (req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const productList = await helpers.getproduct(filePath);
+    if(productList){
+      return res.status(200).render('index', { title: 'avilable items',  productList });
+    }
+    next();
+  }catch(error){
+    next(error);
+  }
+},routeToPageNotFound,errorHandler);
 
-/**
- * patch an item in the product
- * @param {string} path - product path
- * @param {Request} req - request data
- * @param {Response} res - server resonse
- * @param {number} id -the item you wish to patch
- */
-function patchItem(path,req,res,id){
-  const source =  fs.createReadStream(path);
-  let data = '';
-  source.on('data',(chunk)=>{
-    data+=chunk;
-  });
-  source.on('end',()=>{
-    const product = JSON.parse(data);
-    const responseData = product;
-    const updatedItem = product.find((item)=>item.id === id);
-    const patchData = req.body;
-    updatedItem.itemName = patchData.itemName;
-    updatedItem.quantity = patchData.quantity;
-    updatedItem.category = patchData.category;
-    const writeStream = fs.createWriteStream(path);
-    writeStream.write(JSON.stringify(responseData));
-    writeStream.end();
-    res.status(202).send("item patched!");
-  });
-}
+app.get(`/${enums.routes.HOME_HTML}`,async(req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PAGES,`${enums.routes.HOME_HTML}`);
+    const content = await helpers.getPage(filePath);
+    if(content){
+      return res.status(200).send(content);
+    }
+    next();
+  }catch(error){
+    next(error);
+  }
+},routeToPageNotFound,errorHandler);
 
-/**
- * destock an item in the product
- * @param {string} path - product path
- * @param {Request} req - request data
- * @param {Response} res - server resonse
- * @param {number} id -the item you wish to destock
- */
-function destockItem(path,req,res,id){
-  const source =  fs.createReadStream(path);
-  let data = '';
-  source.on('data',(chunk)=>{
-    data+=chunk;
-  });
-  source.on('end',()=>{
-    const product = JSON.parse(data);
-    const responseData = product;
-    const updatedItem = product.find((item)=>item.id === id);
-    const patchData = parseInt(req.params.quantity);
-    updatedItem.quantity -= patchData;
-    const writeStream = fs.createWriteStream(path);
-    writeStream.write(JSON.stringify(responseData));
-    writeStream.end();
-    res.status(202).send("item destocked!");
-  });
-}
+app.get(`/${enums.routes.ASTRONOMY_HTML}`,async (req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PAGES,`${enums.routes.ASTRONOMY_HTML}`);
+    const content = await helpers.getPage(filePath);
+    if(content){
+      return res.status(200).send(content);
+    }
+    next();
+  }catch(error){
+    next(error);
+  }
+},routeToPageNotFound,errorHandler);
+app.get(`/${enums.routes.SERBAL_HTML}`,async(req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PAGES,`${enums.routes.SERBAL_HTML}`);
+    const content = await helpers.getPage(filePath);
+    if(content){
+      return res.status(200).send(content);
+    }
+    next();
+  }catch(error){
+    next(error);
+  }
+},routeToPageNotFound,errorHandler);
+
+app.post(`/${enums.routes.PRODUCT}`,validateProductBody,async (req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const status = await helpers.addItem(filePath,req.body);
+    res.status(status).send("item added!");
+  }catch(error){
+    next(error);
+  }
+  
+},errorHandler);
+
+app.delete(`/${enums.routes.PRODUCT}/:productId`,validateId,async(req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const id = parseInt(req.params.productId);
+    const status = await helpers.removeItem(filePath,id);
+    res.status(status).send("item removed");
+  }catch(error){
+    next(error);
+  }
+},errorHandler);
+
+app.patch(`/${enums.routes.PRODUCT}/:productId`,validateId,validateProductBody,async (req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const id = parseInt(req.params.productId);
+    const status = await helpers.patchItem(filePath,req.body,parseInt(id));
+    res.status(status).send("item patched");
+  }catch(error){
+    next(error);
+  }
+},errorHandler);
+app.patch(`/${enums.routes.PRODUCT}/:productId/destock/:quantity`,validateId,validateQuantity,async (req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const id = parseInt(req.params.productId);
+    const quantity = parseInt(req.params.quantity);
+    const status = await helpers.destockItem(filePath,quantity,id);
+    res.status(status).send("item destock");
+  }catch(error){
+    next(error);
+  }
+},errorHandler);
+app.patch(`/${enums.routes.PRODUCT}/:productId/restock/:quantity`,validateId,validateQuantity,async(req,res,next)=>{
+  try{
+    const filePath = path.join(__dirname,enums.folders.PUBLIC,enums.folders.DATA,`${enums.routes.PRODUCT}.json`);
+    const id = parseInt(req.params.productId);
+    const quantity = parseInt(req.params.quantity);
+    const status = await helpers.restockItem(filePath,quantity,id);
+    res.status(status).send("item restock");
+  }catch(error){
+    next(error);
+  }
+},errorHandler);
+app.use(routeToPageNotFound);
 
 
-/**
- * restock an item in the product
- * @param {string} path - product path
- * @param {Request} req - request data
- * @param {Response} res - server resonse
- * @param {number} id -the item you wish to restock
- */
-function restockItem(path,req,res,id){
-  const source =  fs.createReadStream(path);
-  let data = '';
-  source.on('data',(chunk)=>{
-    data+=chunk;
-  });
-  source.on('end',()=>{
-    const product = JSON.parse(data);
-    const responseData = product;
-    const updatedItem = product.find((item)=>item.id === id);
-    const patchData = parseInt(req.params.quantity);
-    updatedItem.quantity += patchData;
-    const writeStream = fs.createWriteStream(path);
-    writeStream.write(JSON.stringify(responseData));
-    writeStream.end();
-    res.status(202).send("item restocked!");
-  });
-}
 
 
-//todos: middle ware , page not found ,request params consistency
+
+
+app.listen(enums.PORT,()=>{
+  console.log(`Example app listening on port ${enums.PORT}`);
+});
+
+
+
+
+
+
+
+
+

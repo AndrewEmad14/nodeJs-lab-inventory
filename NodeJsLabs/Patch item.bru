@@ -5,21 +5,21 @@ meta {
 }
 
 patch {
-  url: {{baseUrl}}/products/{{id}}
+  url: {{baseUrl}}/products/:id
   body: json
   auth: inherit
 }
 
+params:path {
+  id: 2
+}
+
 body:json {
   {
-      "itemName": "asdfadsf",
+      "itemName": "patch",
       "quantity": 5,
       "category": "smol"
     }
-}
-
-vars:pre-request {
-  id: 1
 }
 
 settings {

@@ -1,0 +1,11 @@
+h1= title
+
+if productList
+  ul
+    each item in productList
+      li
+        strong #{item.itemName} 
+        | (Qty: #{item.quantity}) - 
+        em #{item.category}
+else
+  p No products available.

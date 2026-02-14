@@ -5,12 +5,12 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/products/{{id}}
+  url: {{baseUrl}}/products/:id
   body: none
   auth: inherit
 }
 
-vars:pre-request {
+params:path {
   id: 1
 }
 

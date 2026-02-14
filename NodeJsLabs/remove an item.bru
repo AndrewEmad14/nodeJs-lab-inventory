@@ -5,9 +5,13 @@ meta {
 }
 
 delete {
-  url: {{baseUrl}}/products/{{id}}
+  url: {{baseUrl}}/products/:id
   body: none
   auth: inherit
+}
+
+params:path {
+  id: 1
 }
 
 vars:pre-request {
